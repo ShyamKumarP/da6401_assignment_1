@@ -49,6 +49,12 @@ class NeuralNetwork:
         return self.layers[-1].weighted_sum
     
     def backward(self, y_true, y_pred):
+        """
+        Backward propagation to compute gradients.
+        Returns two numpy arrays: grad_Ws, grad_bs.
+        - `grad_Ws[0]` is gradient for the last (output) layer weights,
+          `grad_bs[0]` is gradient for the last layer biases, and so on.
+        """
         probs = self.layers[-1].output
 
         if self.loss_type == "cross_entropy":
@@ -58,8 +64,21 @@ class NeuralNetwork:
             temp = np.sum(probs * dL_da, axis=0, keepdims=True)
             grad = probs * (dL_da - temp)
 
+        grad_W_list = []
+        grad_b_list = []
+
         for layer in reversed(self.layers):
             grad = layer.backward(grad)
+            grad_W_list.append(layer.grad_W)
+            grad_b_list.append(layer.grad_b)
+        
+        self.grad_W = np.empty(len(grad_W_list), dtype=object)
+        self.grad_b = np.empty(len(grad_b_list), dtype=object)
+        for i, (gw, gb) in enumerate(zip(grad_W_list, grad_b_list)):
+            self.grad_W[i] = gw
+            self.grad_b[i] = gb
+
+        return self.grad_W, self.grad_b
         
     def step(self):
         self.optimizer.update(self.layers)
