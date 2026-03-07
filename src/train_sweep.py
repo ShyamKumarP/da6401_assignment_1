@@ -70,11 +70,15 @@ def main():
     X_train, y_train = pre_processing_data(X_train_raw, y_train_raw)
     X_test, y_test = pre_processing_data(X_test_raw, y_test_raw)
 
+    wandb.init(project="da6401-assignment1",group="hyperparameter_search")
+    run_id = 0
+
     for opt in optimizers:
         for act in activations:
             for hs in hidden_sizes:
                 for lr in learning_rates:
                     for w_init in weight_inits:
+                        run_id += 1
 
                         args = argparse.Namespace(**vars(base_args))
 
@@ -106,6 +110,18 @@ def main():
 
                         acc, loss, f1 = model.evaluate(X_test, y_test, verbose=False)
 
+                        wandb.log({
+                        "experiment_id": run_id,
+                        "optimizer": opt,
+                        "activation": act,
+                        "hidden_size": str(hs),
+                        "learning_rate": lr,
+                        "weight_init": w_init,
+                        "val_accuracy": acc,
+                        "val_loss": loss,
+                        "val_f1": f1
+                    })
+
                         print("Validation accuracy:", acc)
 
                         if acc > best_acc:
@@ -113,7 +129,7 @@ def main():
                             best_weights = model.get_weights()
                             best_config = vars(args)
 
-                        wandb.finish()
+                        
 
     print("\nBest Accuracy:", best_acc)
 
@@ -124,10 +140,15 @@ def main():
         json.dump(best_config, f, indent=4)
 
     print("Best model and config saved.")
+    wandb.finish()
 
+if __name__ == '__main__':
+
+    main()
 
 
 if __name__ == '__main__':
 
     main()
+
 
