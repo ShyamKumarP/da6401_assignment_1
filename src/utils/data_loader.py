@@ -25,10 +25,10 @@ def load_data(dataset):
 
     X_tr, X_te, y_tr, y_te = train_test_split(X,y,test_size=0.1,stratify=y,random_state=42)
     
-    np.save(f"src/{dataset_name}_X_train.npy", X_tr)
-    np.save(f"src/{dataset_name}_y_train.npy", y_tr)
-    np.save(f"src/{dataset_name}_X_test.npy", X_te)
-    np.save(f"src/{dataset_name}_y_test.npy", y_te)
+    np.save(f"src/{dataset}_X_train.npy", X_tr)
+    np.save(f"src/{dataset}_y_train.npy", y_tr)
+    np.save(f"src/{dataset}_X_test.npy", X_te)
+    np.save(f"src/{dataset}_y_test.npy", y_te)
 
     return X_tr, y_tr, X_te, y_te
 
