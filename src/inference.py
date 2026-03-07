@@ -45,7 +45,7 @@ def parse_arguments():
                         choices=['sigmoid', 'tanh', 'relu'])
 
     parser.add_argument('-w_i', '--weight_init', type=str, default='xavier',
-                        choices=['random', 'xavier'])
+                        choices=['random','zeroes', 'xavier'])
 
     parser.add_argument('-w_p', '--wandb_project', type=str, default='da6401-assignment1')
 
