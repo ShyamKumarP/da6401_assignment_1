@@ -19,7 +19,7 @@ def parse_arguments():
                         choices=['mean_squared_error', 'cross_entropy'])
 
     parser.add_argument('-o', '--optimizer', type=str, default='rmsprop',
-                        choices=['sgd', 'momentum', 'nag', 'rmsprop', 'adam', 'nadam'])
+                        choices=['sgd', 'momentum', 'nag', 'rmsprop'])
 
     parser.add_argument('-lr', '--learning_rate', type=float, default=0.001)
 
