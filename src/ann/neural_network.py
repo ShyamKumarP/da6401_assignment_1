@@ -43,7 +43,13 @@ class NeuralNetwork:
     
 
     def forward(self, X):
-        signal = X
+        # Automatically transpose if the input shape is (num_samples, num_features)
+        # instead of the expected (num_features, num_samples)
+        if X.shape[0] != self.input_dim and len(X.shape) > 1 and X.shape[1] == self.input_dim:
+            signal = X.T
+        else:
+            signal = X
+            
         for layer in self.layers:
             signal = layer.forward(signal)
         return self.layers[-1].weighted_sum
@@ -55,6 +61,9 @@ class NeuralNetwork:
         - `grad_Ws[0]` is gradient for the last (output) layer weights,
           `grad_bs[0]` is gradient for the last layer biases, and so on.
         """
+        if y_true.shape[0] != self.output_dim and len(y_true.shape) > 1 and y_true.shape[1] == self.output_dim:
+            y_true = y_true.T
+            
         probs = self.layers[-1].output
 
         if self.loss_type == "cross_entropy":
@@ -166,6 +175,9 @@ class NeuralNetwork:
         return epoch_losses
 
     def evaluate(self, X, y, verbose=True):
+        if y.shape[0] != self.output_dim and len(y.shape) > 1 and y.shape[1] == self.output_dim:
+            y = y.T
+            
         logits = self.forward(X)
 
         predicted = np.argmax(logits, axis=0)
