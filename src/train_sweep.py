@@ -38,13 +38,7 @@ def parse_arguments():
 
     parser.add_argument('-w_p', '--wandb_project', type=str, default='da6401-assignment1')
 
-    parser.add_argument('--model_save_path', type=str, default='best_model.npy')
-
-    parser.add_argument('--log_gradients', action='store_true',
-                        help='Log gradient norms per layer')
-
-    parser.add_argument('--log_activations', action='store_true',
-                        help='Log dead neuron fractions')
+    parser.add_argument('--model_save_path', type=str, default='src/best_model.npy')
 
     return parser.parse_args()
 
@@ -95,8 +89,7 @@ def main():
                         print("\nRunning experiment with:")
                         print(vars(args))
 
-                        wandb.init(project=args.wandb_project, config=vars(args), reinit=True)
-
+                    
                         model = NeuralNetwork(args=args)
 
                         model.train(
@@ -110,6 +103,8 @@ def main():
 
                         acc, loss, f1 = model.evaluate(X_test, y_test, verbose=False)
 
+                        print("Validation accuracy:", acc)
+
                         wandb.log({
                         "experiment_id": run_id,
                         "optimizer": opt,
@@ -121,15 +116,12 @@ def main():
                         "val_loss": loss,
                         "val_f1": f1
                     })
-
-                        print("Validation accuracy:", acc)
-
                         if acc > best_acc:
                             best_acc = acc
                             best_weights = model.get_weights()
                             best_config = vars(args)
 
-                        
+                       
 
     print("\nBest Accuracy:", best_acc)
 
@@ -141,6 +133,8 @@ def main():
 
     print("Best model and config saved.")
     wandb.finish()
+
+
 
 if __name__ == '__main__':
 
