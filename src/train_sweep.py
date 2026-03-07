@@ -53,7 +53,8 @@ def main():
 
     base_args = parse_arguments()
 
-    optimizers = ['sgd', 'momentum', 'nag', 'rmsprop']
+    # Search space
+    optimizers = ['sgd', 'momentum', 'nag', 'rmsprop', 'adam', 'nadam']
     activations = ['relu', 'sigmoid', 'tanh']
     hidden_sizes = [[64,64,64], [128,128,128], [256,128,64]]
     learning_rates = [0.0005, 0.001, 0.005]
@@ -63,62 +64,58 @@ def main():
     best_weights = None
     best_config = None
 
-    print("Loading dataset once...")
+    print("Loading dataset...")
     X_train_raw, y_train_raw, X_test_raw, y_test_raw = load_data(base_args.dataset)
 
     X_train, y_train = pre_processing_data(X_train_raw, y_train_raw)
     X_test, y_test = pre_processing_data(X_test_raw, y_test_raw)
 
-    for opt, act, hs, lr, w_init in product(
-            optimizers, activations, hidden_sizes, learning_rates, weight_inits):
+    for opt in optimizers:
+        for act in activations:
+            for hs in hidden_sizes:
+                for lr in learning_rates:
+                    for w_init in weight_inits:
 
-        args = argparse.Namespace(**vars(base_args))
+                        args = argparse.Namespace(**vars(base_args))
 
-        args.optimizer = opt
-        args.activation = act
-        args.hidden_size = hs
-        args.learning_rate = lr
-        args.weight_init = w_init
-        args.num_layers = len(hs)
+                        args.optimizer = opt
+                        args.activation = act
+                        args.hidden_size = hs
+                        args.learning_rate = lr
+                        args.weight_init = w_init
+                        args.num_layers = len(hs)
 
-        if args.loss == 'mean_squared_error':
-            args.loss = 'mse'
+                        if args.loss == 'mean_squared_error':
+                            args.loss = 'mse'
 
-        print("\n===================================")
-        print("Running experiment with:")
-        print(vars(args))
-        print("===================================")
+                        print("\nRunning experiment with:")
+                        print(vars(args))
 
-        wandb.init(project=args.wandb_project, config=vars(args), reinit=True)
+                        wandb.init(project=args.wandb_project, config=vars(args), reinit=True)
 
-        model = NeuralNetwork(args=args)
+                        model = NeuralNetwork(args=args)
 
-        model.train(
-            X_train=X_train,
-            y_train=y_train,
-            epochs=args.epochs,
-            batch_size=args.batch_size,
-            X_val=X_test,
-            y_val=y_test
-        )
+                        model.train(
+                            X_train=X_train,
+                            y_train=y_train,
+                            epochs=args.epochs,
+                            batch_size=args.batch_size,
+                            X_val=X_test,
+                            y_val=y_test
+                        )
 
-        acc, loss, f1 = model.evaluate(X_test, y_test, verbose=False)
+                        acc, loss, f1 = model.evaluate(X_test, y_test, verbose=False)
 
-        print(f"Validation Accuracy: {acc}")
+                        print("Validation accuracy:", acc)
 
-        if acc > best_acc:
-            best_acc = acc
-            best_weights = model.get_weights()
-            best_config = vars(args)
+                        if acc > best_acc:
+                            best_acc = acc
+                            best_weights = model.get_weights()
+                            best_config = vars(args)
 
-        wandb.finish()
+                        wandb.finish()
 
     print("\nBest Accuracy:", best_acc)
-
-    # Save best model
-    save_dir = os.path.dirname(base_args.model_save_path)
-    if save_dir and not os.path.exists(save_dir):
-        os.makedirs(save_dir)
 
     np.save(base_args.model_save_path, best_weights)
 
@@ -126,9 +123,10 @@ def main():
     with open('src/best_config.json', 'w') as f:
         json.dump(best_config, f, indent=4)
 
-    print("Best model and configuration saved.")
+    print("Best model and config saved.")
 
 
 
 if __name__ == '__main__':
+
     main()
