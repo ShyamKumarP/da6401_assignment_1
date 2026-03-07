@@ -1,5 +1,8 @@
 # Assignment 1: Multi-Layer Perceptron for Image Classification
 
+## Submission Link
+Github Link - https://github.com/ShyamKumarP/da6401_assignment_1.git
+Weights & Biases Report - 
 ## Overview
 
 This assignment requires you to implement a neural network from scratch using only NumPy. You will build all components including layers, activations, optimizers, and loss functions, then train your network on MNIST or Fashion-MNIST datasets.
