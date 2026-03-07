@@ -27,7 +27,7 @@ def parse_arguments():
 
     parser.add_argument('-nhl', '--num_layers', type=int, default=3)
 
-    parser.add_argument('-sz', '--hidden_size', type=int, nargs='+', default=[128])
+    parser.add_argument('-sz', '--hidden_size', type=int, nargs='+', default=[128,128,128])
 
     parser.add_argument('-a', '--activation', type=str, default='relu',
                         choices=['sigmoid', 'tanh', 'relu'])
@@ -38,12 +38,6 @@ def parse_arguments():
     parser.add_argument('-w_p', '--wandb_project', type=str, default='da6401-assignment1')
 
     parser.add_argument('--model_save_path', type=str, default='best_model.npy')
-
-    parser.add_argument('--log_gradients', action='store_true',
-                        help='Log gradient norms per layer')
-
-    parser.add_argument('--log_activations', action='store_true',
-                        help='Log dead neuron fractions')
 
     return parser.parse_args()
 
