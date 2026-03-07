@@ -1,4 +1,11 @@
 # DA6401 Assignment 1
+
+## Submission Link
+Github Link - https://github.com/ShyamKumarP/da6401_assignment_1.git
+Weights & Biases Report - https://wandb.ai/me22b223-iitm/da6401-assignment1/reports/gxhxfhgfxhgfghxdh--VmlldzoxNjEzNjE2OQ?accessToken=aqqkqeo68xmr6m1b5hb0s3q9kkxkre9r1wbmxwm40aqdz43j1kszdb8fq96uv1tv
+
+Shyam Kumar- ME22B223
+
 ## Neural Network Implementation from Scratch (NumPy)
 
 This project implements a Fully Connected Neural Network from scratch using NumPy for image classification on the MNIST and Fashion-MNIST datasets.
@@ -133,19 +140,6 @@ Used in the output layer for multi-class classification.
 
 ------------------------------------------------------------
 
-LOSS FUNCTION
-
-Cross Entropy Loss
-
-L = - Σ y log(p)
-
-Where
-
-y = true label
-p = predicted probability
-
-------------------------------------------------------------
-
 BACKPROPAGATION
 
 Gradients are computed using the chain rule.
@@ -168,13 +162,7 @@ Momentum
 
 Accelerates gradient descent using velocity terms.
 
-Adam
-
-Adaptive optimizer combining momentum and RMSProp.
-
-Nadam
-
-Adam with Nesterov momentum.
+NDG & RMSprop
 
 ------------------------------------------------------------
 
@@ -206,52 +194,11 @@ Tracked metrics include:
 - Hyperparameters
 
 ------------------------------------------------------------
-
-PROJECT STRUCTURE
-
-project/
-│
-├── src
-│   ├── models
-│   │   ├── neural_network.py
-│   │   ├── neural_layer.py
-│   │
-│   ├── utils
-│   │   ├── data_loader.py
-│   │
-│   ├── activations.py
-│   ├── loss_functions.py
-│   ├── optimizers.py
-│
-├── train.py
-├── README.md
-└── requirements.txt
-
-------------------------------------------------------------
-
 INSTALLATION
-
-Clone the repository
-
-git clone https://github.com/your-repo/project-name.git
-cd project-name
 
 Install dependencies
 
 pip install -r requirements.txt
-
-------------------------------------------------------------
-
-RUN TRAINING
-
-Example command
-
-python train.py \
---dataset fashion_mnist \
---epochs 10 \
---batch_size 64 \
---learning_rate 0.001 \
---optimizer adam
 
 ------------------------------------------------------------
 
@@ -265,17 +212,7 @@ COMMAND LINE ARGUMENTS
 --wandb_project     WandB project name
 --model_save_path   Path to save trained model
 
-------------------------------------------------------------
-
-MODEL SAVING
-
-After training, the trained model is saved using
-
---model_save_path
-
-This allows reuse of the model for evaluation or inference.
-
-------------------------------------------------------------
+-----------------------------------------------------------
 
 KEY LEARNING OUTCOMES
 
