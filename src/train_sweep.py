@@ -54,7 +54,7 @@ def main():
     base_args = parse_arguments()
 
     # Search space
-    optimizers = ['sgd', 'momentum', 'nag', 'rmsprop', 'adam', 'nadam']
+    optimizers = ['sgd', 'momentum', 'nag', 'rmsprop']
     activations = ['relu', 'sigmoid', 'tanh']
     hidden_sizes = [[64,64,64], [128,128,128], [256,128,64]]
     learning_rates = [0.0005, 0.001, 0.005]
@@ -130,3 +130,4 @@ def main():
 if __name__ == '__main__':
 
     main()
+
