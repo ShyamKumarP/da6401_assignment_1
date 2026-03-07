@@ -45,7 +45,7 @@ def parse_arguments():
 
     parser.add_argument('-w_p', '--wandb_project', type=str, default='da6401-assignment1')
 
-    parser.add_argument('--model_save_path', type=str,default='best_model.npy')
+    parser.add_argument('--model_save_path', type=str,default='src/best_model.npy')
     return parser.parse_args()
 
 def load_model(model_save_path, args):
