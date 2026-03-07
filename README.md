@@ -1,28 +1,301 @@
-# Assignment 1: Multi-Layer Perceptron for Image Classification
+# DA6401 Assignment 1
+## Neural Network Implementation from Scratch (NumPy)
 
-## Submission Link
-Github Link - https://github.com/ShyamKumarP/da6401_assignment_1.git
-Weights & Biases Report - https://wandb.ai/me22b223-iitm/da6401-assignment1/reports/gxhxfhgfxhgfghxdh--VmlldzoxNjEzNjE2OQ?accessToken=aqqkqeo68xmr6m1b5hb0s3q9kkxkre9r1wbmxwm40aqdz43j1kszdb8fq96uv1tv
+This project implements a Fully Connected Neural Network from scratch using NumPy for image classification on the MNIST and Fashion-MNIST datasets.
 
-Shyam Kumar- ME22B223
+The goal of this assignment is to understand how neural networks work internally by implementing all components manually without using deep learning frameworks like TensorFlow or PyTorch.
 
-## Overview
+The implementation includes:
 
-This assignment requires you to implement a neural network from scratch using only NumPy. You will build all components including layers, activations, optimizers, and loss functions, then train your network on MNIST or Fashion-MNIST datasets.
+- Forward Propagation
+- Backpropagation
+- Activation Functions
+- Loss Functions
+- Optimizers
+- Mini-batch Gradient Descent
+- Experiment Tracking using Weights & Biases (WandB)
 
-## Learning Objectives
+------------------------------------------------------------
 
-- Understand forward and backward propagation
-- Implement gradient computation manually
-- Implement various optimizers (SGD, Momentum, Adam, Nadam)
-- Work with activation functions and their derivatives
-- Train and evaluate neural networks
-- Log experiments using Weights & Biases
+PROJECT PIPELINE
 
-## Contact
+Load Dataset
+↓
+Preprocess Data
+↓
+One-Hot Encode Labels
+↓
+Initialize Neural Network
+↓
+Forward Propagation
+↓
+Loss Computation
+↓
+Backpropagation
+↓
+Optimizer Updates
+↓
+Training Loop
+↓
+Model Saving
 
-For questions or issues, please contact the teaching staff or post on the course forum.
+------------------------------------------------------------
 
----
+DATASET
 
-Good luck with your implementation!
+The project supports the following datasets.
+
+MNIST
+- 60,000 training images
+- 10,000 test images
+- Image size: 28 × 28
+- Classes: 10 (digits 0–9)
+
+Fashion-MNIST
+- 60,000 training images
+- 10,000 test images
+- Image size: 28 × 28
+- Classes: 10 clothing categories
+
+Datasets are downloaded using OpenML.
+
+------------------------------------------------------------
+
+DATA PREPROCESSING
+
+1. Normalization
+
+Pixel values range from:
+
+0 – 255
+
+These are normalized to:
+
+0 – 1
+
+using
+
+X = X / 255.0
+
+This improves training stability and gradient convergence.
+
+------------------------------------------------------------
+
+2. One-Hot Encoding
+
+Labels are converted to one-hot vectors.
+
+Example
+
+Label = 3
+
+One-hot = [0 0 0 1 0 0 0 0 0 0]
+
+------------------------------------------------------------
+
+NEURAL NETWORK ARCHITECTURE
+
+The neural network consists of multiple fully connected layers.
+
+Each layer performs
+
+Z = W · X + b
+A = activation(Z)
+
+Where
+
+W = Weight matrix
+b = Bias vector
+Z = Linear output
+A = Activation output
+
+------------------------------------------------------------
+
+ACTIVATION FUNCTIONS
+
+Sigmoid
+
+σ(x) = 1 / (1 + e^-x)
+
+Tanh
+
+tanh(x)
+
+ReLU
+
+max(0, x)
+
+Softmax
+
+softmax(z_i) = exp(z_i) / Σ exp(z_j)
+
+Used in the output layer for multi-class classification.
+
+------------------------------------------------------------
+
+LOSS FUNCTION
+
+Cross Entropy Loss
+
+L = - Σ y log(p)
+
+Where
+
+y = true label
+p = predicted probability
+
+------------------------------------------------------------
+
+BACKPROPAGATION
+
+Gradients are computed using the chain rule.
+
+dZ = dA * activation_derivative(Z)
+dW = (1/m) * dZ · A_prev^T
+db = (1/m) * Σ dZ
+
+These gradients are used to update model parameters.
+
+------------------------------------------------------------
+
+OPTIMIZERS IMPLEMENTED
+
+SGD (Stochastic Gradient Descent)
+
+W = W - lr * dW
+
+Momentum
+
+Accelerates gradient descent using velocity terms.
+
+Adam
+
+Adaptive optimizer combining momentum and RMSProp.
+
+Nadam
+
+Adam with Nesterov momentum.
+
+------------------------------------------------------------
+
+TRAINING PROCEDURE
+
+Training is done using mini-batch gradient descent.
+
+For each epoch:
+
+1. Shuffle training data
+2. Split into mini-batches
+3. Forward propagation
+4. Compute loss
+5. Backpropagation
+6. Update parameters using optimizer
+7. Log metrics using WandB
+
+------------------------------------------------------------
+
+EXPERIMENT TRACKING
+
+Weights & Biases (WandB) is used for experiment tracking.
+
+Tracked metrics include:
+
+- Training loss
+- Validation loss
+- Accuracy
+- Hyperparameters
+
+------------------------------------------------------------
+
+PROJECT STRUCTURE
+
+project/
+│
+├── src
+│   ├── models
+│   │   ├── neural_network.py
+│   │   ├── neural_layer.py
+│   │
+│   ├── utils
+│   │   ├── data_loader.py
+│   │
+│   ├── activations.py
+│   ├── loss_functions.py
+│   ├── optimizers.py
+│
+├── train.py
+├── README.md
+└── requirements.txt
+
+------------------------------------------------------------
+
+INSTALLATION
+
+Clone the repository
+
+git clone https://github.com/your-repo/project-name.git
+cd project-name
+
+Install dependencies
+
+pip install -r requirements.txt
+
+------------------------------------------------------------
+
+RUN TRAINING
+
+Example command
+
+python train.py \
+--dataset fashion_mnist \
+--epochs 10 \
+--batch_size 64 \
+--learning_rate 0.001 \
+--optimizer adam
+
+------------------------------------------------------------
+
+COMMAND LINE ARGUMENTS
+
+--dataset           Dataset (mnist / fashion_mnist)
+--epochs            Number of training epochs
+--batch_size        Batch size
+--learning_rate     Learning rate
+--optimizer         Optimizer type
+--wandb_project     WandB project name
+--model_save_path   Path to save trained model
+
+------------------------------------------------------------
+
+MODEL SAVING
+
+After training, the trained model is saved using
+
+--model_save_path
+
+This allows reuse of the model for evaluation or inference.
+
+------------------------------------------------------------
+
+KEY LEARNING OUTCOMES
+
+This project demonstrates understanding of
+
+- Neural network architecture
+- Forward propagation
+- Backpropagation
+- Gradient-based optimization
+- Activation functions
+- Loss functions
+- Data preprocessing
+- Experiment tracking
+
+Implementing neural networks from scratch provides deeper insight into how modern deep learning frameworks operate internally.
+
+------------------------------------------------------------
+
+AUTHOR
+
+Shyam Kumar
+M.Tech Quantitative Finance
+IIT Madras
