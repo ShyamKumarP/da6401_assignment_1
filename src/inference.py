@@ -14,10 +14,6 @@ import utils.data_loader as data_loader
 
 
 def parse_arguments():
-    """
-    Parse command-line arguments for inference.
-    """
-
     parser = argparse.ArgumentParser(description='Run inference on test set')
 
     parser.add_argument('-d', '--dataset', type=str, default='mnist',
@@ -39,23 +35,22 @@ def parse_arguments():
 
     parser.add_argument('-nhl', '--num_layers', type=int, default=3)
 
-    parser.add_argument('-sz', '--hidden_size', type=int, nargs='+', default=[128])
+    parser.add_argument('-sz', '--hidden_size', type=int, nargs='+', default=[128,128,128])
 
     parser.add_argument('-a', '--activation', type=str, default='relu',
                         choices=['sigmoid', 'tanh', 'relu'])
 
     parser.add_argument('-w_i', '--weight_init', type=str, default='xavier',
-                        choices=['random','zeroes', 'xavier'])
+                        choices=['random', 'xavier', 'zeros'])
 
     parser.add_argument('-w_p', '--wandb_project', type=str, default='da6401-assignment1')
 
-    parser.add_argument('--model_save_path', type=str, default='best_model.npy')
-    parser.add_argument('--model_path', type=str, default='best_model.npy')
+    parser.add_argument('--model_save_path', type=str,default='best_model.npy')
     return parser.parse_args()
 
-def load_model(model_path, args):
+def load_model(model_save_path, args):
     model = NeuralNetwork(args)
-    saved_weights = np.load(model_path, allow_pickle=True).item()
+    saved_weights = np.load(model_save_path, allow_pickle=True).item()
     model.set_weights(saved_weights)
     return model
 
@@ -96,7 +91,7 @@ def main():
     
     _,_,X_test_raw,y_test_raw = data_loader.load_data(args.dataset)
     X_test, y_test = data_loader.pre_processing_data(X_test_raw, y_test_raw)   
-    model = load_model(args.model_path, args)
+    model = load_model(args.model_save_path, args)
     results = evaluate_model(model, X_test, y_test)
 
     print(f"Accuracy:  {results['accuracy']:.4f}")
