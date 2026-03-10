@@ -1,108 +1,89 @@
-"""
-Inference Script
-Evaluate trained models on test sets
-"""
 
 import argparse
+import os
+import sys
 import numpy as np
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
-from sklearn.metrics import confusion_matrix 
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 from ann.neural_network import NeuralNetwork
-import ann.objective_functions as obj_funcs
-from ann.activations import softmax
-import utils.data_loader as data_loader
+from utils.data_loader import load_data
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(description='Run inference on test set')
+    """Parse command-line arguments (same as train.py)."""
+    parser = argparse.ArgumentParser()
 
-    parser.add_argument('-d', '--dataset', type=str, default='mnist',
-                        choices=['mnist', 'fashion_mnist'])
+    parser.add_argument("-d", "--dataset", type=str, default="mnist",choices=["mnist", "fashion_mnist"])
+    parser.add_argument("-e", "--epochs", type=int, default=10)
+    parser.add_argument("-b", "--batch_size", type=int, default=64)
+    parser.add_argument("-l", "--loss", type=str, default="cross_entropy",choices=["cross_entropy", "mse", "mean_squared_error"])
+    parser.add_argument("-o", "--optimizer", type=str, default="rmsprop",choices=["sgd", "momentum", "nag", "rmsprop"])
+    parser.add_argument("-lr", "--learning_rate", type=float, default=0.001)
+    parser.add_argument("-wd", "--weight_decay", type=float, default=0.0)
+    parser.add_argument("-nhl", "--num_layers", type=int, default=3)
+    parser.add_argument("-sz", "--hidden_size", type=int, nargs="+",default=[128, 128, 128])
+    parser.add_argument("-a", "--activation", type=str, default="relu",choices=["sigmoid", "tanh", "relu"])
+    parser.add_argument("-w_i", "--weight_init", type=str, default="xavier",choices=["random", "xavier", "zeros"])
 
-    parser.add_argument('-e', '--epochs', type=int, default=10)
+    parser.add_argument("-wp", "--wandb_project", type=str, default='da6401-assignment1')
+    parser.add_argument("--model_path", type=str, default="best_model.npy")
 
-    parser.add_argument('-b', '--batch_size', type=int, default=64)
+    args = parser.parse_args()
 
-    parser.add_argument('-l', '--loss', type=str, default='cross_entropy',
-                        choices=['mean_squared_error', 'cross_entropy'])
-
-    parser.add_argument('-o', '--optimizer', type=str, default='rmsprop',
-                        choices=['sgd', 'momentum', 'nag', 'rmsprop'])
-
-    parser.add_argument('-lr', '--learning_rate', type=float, default=0.001)
-
-    parser.add_argument('-wd', '--weight_decay', type=float, default=0.0005)
-
-    parser.add_argument('-nhl', '--num_layers', type=int, default=3)
-
-    parser.add_argument('-sz', '--hidden_size', type=int, nargs='+', default=[128,128,128])
-
-    parser.add_argument('-a', '--activation', type=str, default='relu',
-                        choices=['sigmoid', 'tanh', 'relu'])
-
-    parser.add_argument('-w_i', '--weight_init', type=str, default='xavier',
-                        choices=['random', 'xavier', 'zeros'])
-
-    parser.add_argument('-w_p', '--wandb_project', type=str, default='da6401-assignment1')
-
-    parser.add_argument('--model_save_path', type=str,default='src/best_model.npy')
-    return parser.parse_args()
-
-def load_model(model_save_path, args):
-    model = NeuralNetwork(args)
-    saved_weights = np.load(model_save_path, allow_pickle=True).item()
-    model.set_weights(saved_weights)
-    return model
+    return args
 
 
-def evaluate_model(model, X_test, y_test): 
+
+def evaluate_model(model, X_test, y_test):
+    """
+    Evaluate a model on test data.
+
+    Returns
+    -------
+    dict with keys: logits, loss, accuracy, f1, precision, recall
+    """
+    from sklearn.metrics import f1_score, precision_score, recall_score
+
     logits = model.forward(X_test)
-    
-    probs = softmax(logits)
-    predictions = np.argmax(logits, axis=0)  
-    true_labels = np.argmax(y_test, axis=0)
-    
-    loss = np.mean(obj_funcs.Cross_entropy_forward(y_test, probs)) 
+    loss      = model.loss_function.forward(logits, y_test)
+    y_pred    = np.argmax(logits, axis=1)
 
-    accuracy = accuracy_score(true_labels, predictions)
-    precision = precision_score(true_labels, predictions, average='macro', zero_division=0)
-    recall = recall_score(true_labels, predictions, average='macro', zero_division=0)
-    f1 = f1_score(true_labels, predictions, average='macro', zero_division=0)
-    
-    conf_mat = confusion_matrix(true_labels, predictions)
+    accuracy  = float(np.mean(y_pred == y_test))
+    f1        = float(f1_score(y_test, y_pred, average="macro", zero_division=0))
+    precision = float(precision_score(y_test, y_pred, average="macro", zero_division=0))
+    recall    = float(recall_score(y_test, y_pred, average="macro", zero_division=0))
 
     return {
-        "logits": logits,
-        "loss": loss,
-        "accuracy": accuracy,
-        "f1": f1,
+        "logits":    logits,
+        "loss":      float(loss),
+        "accuracy":  accuracy,
+        "f1":        f1,
         "precision": precision,
-        "recall": recall,
-        "confusion_matrix": conf_mat
+        "recall":    recall,
     }
+
 
 def main():
     args = parse_arguments()
-    if args.loss == 'mean_squared_error':
-        args.loss = 'mse'
-   
-    if len(args.hidden_size) == 1 and args.num_layers > 1:
-        args.hidden_size = args.hidden_size * args.num_layers
+    _, _, _, _, X_test, y_test = load_data(dataset=args.dataset, val_split=0.1)
     
-    _,_,X_test_raw,y_test_raw = data_loader.load_data(args.dataset)
-    X_test, y_test = data_loader.pre_processing_data(X_test_raw, y_test_raw)   
-    model = load_model(args.model_save_path, args)
-    results = evaluate_model(model, X_test, y_test)
+    best_model = NeuralNetwork(args)
+    best_weights = np.load(args.model_path, allow_pickle=True).item()
+    best_model.set_weights(best_weights)
+    
+    results = evaluate_model(best_model, X_test, y_test)
 
-    print(f"Accuracy:  {results['accuracy']:.4f}")
-    print(f"Precision: {results['precision']:.4f}")
-    print(f"Recall:    {results['recall']:.4f}")
-    print(f"F1-Score:  {results['f1']:.4f}")
-    print(f"Loss:      {results['loss']:.4f}")
-    print("Evaluation complete!")
+    print("\n=== Evaluation Results ===")
+    print(f"  Loss      : {results['loss']:.4f}")
+    print(f"  Accuracy  : {results['accuracy']:.4f}")
+    print(f"  F1 (macro): {results['f1']:.4f}")
+    print(f"  Precision : {results['precision']:.4f}")
+    print(f"  Recall    : {results['recall']:.4f}")
 
+    print("\nEvaluation complete!")
     return results
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
