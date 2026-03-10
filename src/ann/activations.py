@@ -2,44 +2,53 @@
 Activation Functions and Their Derivatives
 Implements: ReLU, Sigmoid, Tanh, Softmax
 """
-"""
-Activation Functions and Their Derivatives
-Implements: ReLU, Sigmoid, Tanh, Softmax
-"""
 
 import numpy as np
 
-def sigmoid(x):
-    return 1/(1 + np.exp(-x))
-def sigmoid_derivative(x):
-    return sigmoid(x)*(1-sigmoid(x))
+#Linear activation function needed for the output layer, to return logits
+class Linear:
+    def forward(self, x):
+        return x
 
-def relu(x):
-    return np.maximum(0,x) 
-def relu_derivative(x):
-    return (x > 0).astype(float) 
+    def backward(self, x):
+        return np.ones_like(x)
 
-def tanh(x):
-    return np.tanh(x)
-def tanh_derivative(x):
-    return (1 - tanh(x)**2)
+#ReLU
+class ReLU:
+    def forward(self, x):
+        return np.maximum(0, x)
 
-def softmax(x):
-    #for stability
-    shifted_x = x - np.max(x, axis = 0, keepdims=True)
-    exp_k = np.exp(shifted_x)
-    s = exp_k/np.sum(exp_k, axis=0, keepdims=True)
-    return s 
-def softmax_derivative(x):
-    s = softmax(x)
-    return np.ones_like(x)
+    def backward(self, x):
+        return np.where(x > 0, 1, 0)
 
-ACTIVATION_MAPPING = {
-    'relu': (relu, relu_derivative),
-    'sigmoid': (sigmoid, sigmoid_derivative),
-    'tanh': (tanh, tanh_derivative),
-    'softmax': (softmax, softmax_derivative),
+#Sigmoid
+class Sigmoid:
+    def forward(self, x):
+        return 1 / (1 + np.exp(-x))
+
+    def backward(self, x):
+        return Sigmoid(x) * (1 - Sigmoid(x))
+
+#Tanh
+class Tanh:
+    def forward(self, x):
+        return np.tanh(x)
+
+    def backward(self, x):
+        return 1 - np.tanh(x)**2
+
+
+Activation_Mapping = {
+    "linear": Linear,
+    "relu": ReLU,
+    "sigmoid": Sigmoid,
+    "tanh": Tanh
 }
 
+#Getting the required activation function object
 def get_activation(name):
-    return ACTIVATION_MAPPING[name]
+    name = name.lower()
+    try:
+        return Activation_Mapping[name]()
+    except KeyError:
+        raise ValueError(f"Activation function {name} not found")
