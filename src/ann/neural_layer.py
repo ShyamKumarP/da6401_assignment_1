@@ -2,51 +2,68 @@
 Neural Layer Implementation
 Handles weight initialization, forward pass, and gradient computation
 """
-"""
-Neural Layer Implementation
-Handles weight initialization, forward pass, and gradient computation
-"""
+import numpy as np
+from ann.activations import get_activation
 
-import numpy as np  
-from ann import activations
+
 class NeuralLayer:
-    def __init__(self, input_size, layer_size,weight_init = 'xavier',layer_type = 'hidden',activation_function = 'relu'):
-        self.input_size = input_size
-        self.layer_size = layer_size
-        self.layer_type = layer_type
- 
-        if weight_init == 'zeros':
-            self.W = np.zeros((layer_size, input_size)) 
-        elif weight_init == 'random':
-            self.W = np.random.randn(layer_size, input_size) * 0.01  
-        elif weight_init == 'xavier':
-            std_dev = np.sqrt(2 / (self.input_size + self.layer_size))
-            self.W = np.random.randn(layer_size, input_size) * std_dev  
+    """
+    intput size : no of neurons in the previous layer
+    output size : no of neurons in the current layer
+    activation : activation used in current layer
+    weights_init : how weights are initialized in current layer
+    """
+    def __init__(self, input_dim, output_dim, activation = "relu", weight_init = "xavier"):
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+        self.activation_name = activation
+        self.activation = get_activation(activation)
+
+        
+        self.W, self.b = self._weight_initialization(weight_init)
+
+        
+        self.z = None       
+        self.input_cache = None    
+
+        self.grad_W = None
+        self.grad_b = None
+
+    
+
+    def _weight_initialization(self, weight_init):
+        weight_init = weight_init.lower()
+        if weight_init == "zeros":
+            W = np.zeros((self.input_dim, self.output_dim))
+            b = np.zeros((1, self.output_dim))
+        elif weight_init == "random":
+            W = np.random.randn(self.input_dim, self.output_dim) * 0.01
+            b = np.zeros((1, self.output_dim))
+        elif weight_init == "xavier":
+            limit = np.sqrt(4.0 / (self.input_dim + self.output_dim))
+            W = np.random.uniform(-limit, limit, (self.input_dim, self.output_dim))
+            b = np.zeros((1, self.output_dim))
         else:
-            raise ValueError(f"Unknown")
-        
-        self.bias = np.zeros((layer_size, 1))
-        self.grad_W = np.zeros_like(self.W)
-        self.grad_b = np.zeros_like(self.bias)
-        
-        if self.layer_type == 'hidden':
-            self.activation_function, self.activation_derivative = activations.get_activation(activation_function)
-        elif self.layer_type == 'output':
-            self.activation_function, self.activation_derivative = activations.get_activation('softmax')
-        
-    
-    def forward(self, input_vector):
-        self.input_vector = input_vector  
-        self.weighted_sum = np.dot(self.W, input_vector) + self.bias  
-        self.output = self.activation_function(self.weighted_sum)  
-        return self.output
+            raise ValueError(f"Unknown weight_init '{weight_init}'")
+        return W, b
+
     
 
-    def backward(self, dL_dz_next):
-        dL_dz = dL_dz_next * self.activation_derivative(self.weighted_sum)
+    def forward(self, input_cache):
+        self.input_cache = input_cache                          
+        self.z = input_cache @ self.W + self.b          
+        return self.activation.forward(self.z)
 
-        self.grad_W = np.dot(dL_dz,self.input_vector.T) / self.input_vector.shape[1]  
-        self.grad_b = np.sum(dL_dz, axis=1, keepdims=True) / self.input_vector.shape[1]  
+    
+
+    def backward(self, delta):  
+        delta_z = delta * self.activation.backward(self.z)                     
+
+        batch_size = self.input_cache.shape[0]
         
-        dL_dz_prev = np.dot((self.W).T,dL_dz) 
-        return dL_dz_prev
+        self.grad_W = (self.input_cache.T @ delta_z) / batch_size   
+        self.grad_b = np.sum(delta_z, axis=0, keepdims=True) / batch_size  
+
+        delta_prev = delta_z @ self.W.T                    
+        return delta_prev
+
