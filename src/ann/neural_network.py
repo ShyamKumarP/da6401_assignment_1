@@ -1,85 +1,74 @@
-"""
-Main Neural Network Model class
-Handles forward and backward propagation loops
-"""
-
 import numpy as np
-import wandb
-from sklearn.metrics import f1_score
-from ann import optimizers,objective_functions
 from ann.neural_layer import NeuralLayer
-from utils.data_loader import batch_generator
+from ann.objective_functions import get_loss_function
+from ann.optimizers import get_optimizer
+
+
+def _softmax(logits):
+    exp_z = np.exp(logits - logits.max(axis=1, keepdims=True))
+    return exp_z / exp_z.sum(axis=1, keepdims=True)
 
 
 class NeuralNetwork:
-    def __init__(self, args):
-        self.layers = []
-        self.num_layers = args.num_layers
-        self.lr = args.learning_rate
-        self.weight_decay = args.weight_decay
-        self.layers_sizes = args.hidden_size
-        self.weight_init = args.weight_init
-        self.activation = args.activation
-        self.loss_type = args.loss
-
-        self.input_dim = 784  
-        self.output_dim = 10
-        
-        # Optimizer
-        opt_map = {
-            "sgd": optimizers.SGD,
-            "momentum": optimizers.Momentum,
-            "nag": optimizers.NAG,
-            "rmsprop": optimizers.RMSprop
-        }
-        self.optimizer = opt_map[args.optimizer](lr=self.lr, weight_decay=self.weight_decay)
-        
-        prev_dim = self.input_dim
-
-        for size in self.layers_sizes[:self.num_layers]:
-            self.layers.append(NeuralLayer(input_size=prev_dim,layer_size=size,weight_init=self.weight_init,layer_type="hidden",activation_function=self.activation))
-            prev_dim = size
-        self.layers.append(NeuralLayer(input_size=prev_dim,layer_size=self.output_dim,weight_init=self.weight_init,layer_type="output"))
     
+    def __init__(self, cli_args):
+        self.args = cli_args
+        self.layers: list = []
+       
+        input_dim   = 784       # 28*28 input size for MNIST / Fashion-MNIST
+        num_classes = 10
 
+        hidden_sizes = cli_args.hidden_size  
+        activation   = cli_args.activation   
+        weight_init  = cli_args.weight_init
+
+        prev_dim = input_dim
+        for h_size in hidden_sizes:
+            self.layers.append(NeuralLayer(prev_dim, h_size, activation=activation, weight_init=weight_init))
+            prev_dim = h_size
+
+        self.layers.append(NeuralLayer(prev_dim, num_classes, activation="linear", weight_init=weight_init))    # output layer and without softmax
+
+        self.loss_function = get_loss_function(cli_args.loss)
+
+    
+        opt_name = cli_args.optimizer.lower()
+        lr       = cli_args.learning_rate
+        if opt_name in ("momentum", "nag"):
+            self.optimizer = get_optimizer(opt_name, learning_rate=lr)
+        elif opt_name == "rmsprop":
+            self.optimizer = get_optimizer(opt_name, learning_rate=lr)
+        elif opt_name in ("adam", "nadam"):
+            self.optimizer = get_optimizer(opt_name, learning_rate=lr)
+        else:
+            self.optimizer = get_optimizer(opt_name, learning_rate=lr)
+
+        self.weight_decay = cli_args.weight_decay
+
+        # Stored grad while backward()
+        self.grad_W = None
+        self.grad_b = None
+
+   
     def forward(self, X):
-        # Automatically transpose if the input shape is (num_samples, num_features)
-        # instead of the expected (num_features, num_samples)
-        if X.shape[0] != self.input_dim and len(X.shape) > 1 and X.shape[1] == self.input_dim:
-            signal = X.T
-        else:
-            signal = X
-            
+        a = X
         for layer in self.layers:
-            signal = layer.forward(signal)
-        return self.layers[-1].weighted_sum
-    
-    def backward(self, y_true, y_pred):
-        """
-        Backward propagation to compute gradients.
-        Returns two numpy arrays: grad_Ws, grad_bs.
-        - `grad_Ws[0]` is gradient for the last (output) layer weights,
-          `grad_bs[0]` is gradient for the last layer biases, and so on.
-        """
-        if y_true.shape[0] != self.output_dim and len(y_true.shape) > 1 and y_true.shape[1] == self.output_dim:
-            y_true = y_true.T
-            
-        probs = self.layers[-1].output
+            a = layer.forward(a)
+        return a
 
-        if self.loss_type == "cross_entropy":
-            grad = probs - y_true
-        else:
-            dL_da = objective_functions.Mean_Square_backward(y_true, probs)
-            temp = np.sum(probs * dL_da, axis=0, keepdims=True)
-            grad = probs * (dL_da - temp)
+
+    def backward(self, y_true, y_pred):
+        
+        delta = self.loss_function.backward(y_pred, y_true)
 
         grad_W_list = []
         grad_b_list = []
 
         for layer in reversed(self.layers):
-            grad = layer.backward(grad)
+            delta = layer.backward(delta)
             grad_W_list.append(layer.grad_W)
             grad_b_list.append(layer.grad_b)
+
         
         self.grad_W = np.empty(len(grad_W_list), dtype=object)
         self.grad_b = np.empty(len(grad_b_list), dtype=object)
@@ -88,112 +77,95 @@ class NeuralNetwork:
             self.grad_b[i] = gb
 
         return self.grad_W, self.grad_b
+
+    
+
+    def train(self, X_train, y_train, X_val = None, y_val = None, wandb_run = None):
         
-    def step(self):
-        self.optimizer.update(self.layers)
+        epochs     = self.args.epochs
+        batch_size = self.args.batch_size
+        n          = X_train.shape[0]
+        history    = {"train_loss": [], "train_acc": [], "val_loss":   [], "val_acc":   []}
 
-    def get_weights(self):
-        weights_dict = {}
-        for i, layer in enumerate(self.layers):
-            weights_dict[f'W{i}'] = layer.W.copy()
-            weights_dict[f'layer_{i}_bias'] = layer.bias.copy()
-        return weights_dict
-        
-    def set_weights(self, weights_dict):
-        for i, layer in enumerate(self.layers):
-            if f'W{i}' in weights_dict and f'layer_{i}_bias' in weights_dict:
-                layer.W = weights_dict[f'W{i}'].copy()
-                layer.bias = weights_dict[f'layer_{i}_bias'].copy()
-           
-    def train(self, X_train, y_train, epochs=1, batch_size=64, X_val=None, y_val=None):
-
-        best_f1 = -1
-        best_weights = self.get_weights()
-
-        epoch_losses = []
+        use_nag = self.args.optimizer.lower() == "nag"
 
         for epoch in range(epochs):
+            idx            = np.random.permutation(n)
+            X_sample, y_sample = X_train[idx], y_train[idx]
+            epoch_loss     = 0.0
+            correct        = 0
 
-            correct_predictions = 0
-            batch_losses = []
+            for start in range(0, n, batch_size):
+                Xb = X_sample[start: start + batch_size]
+                yb = y_sample[start: start + batch_size]
 
-            for X_batch, y_batch in batch_generator(X_train, y_train, batch_size):
+                if use_nag:
+                    self.optimizer.apply_lookahead(self.layers)
 
-                logits = self.forward(X_batch)
+                logits = self.forward(Xb)
 
-                predicted = np.argmax(logits, axis=0)
-                actual = np.argmax(y_batch, axis=0)
+                if use_nag:
+                    self.optimizer.undo_lookahead(self.layers)
 
-                correct_predictions += np.sum(predicted == actual)
+                self.backward(yb, logits)
+                self.optimizer.step(self.layers, weight_decay=self.weight_decay)
 
-                probs = self.layers[-1].output
+                epoch_loss += self.loss_function.forward(logits, yb) * Xb.shape[0]
+                correct    += int(np.sum(np.argmax(logits, axis=1) == yb))
 
-                if self.loss_type == "cross_entropy":
-                    loss = objective_functions.Cross_entropy_forward(y_batch, probs)
-                else:
-                    loss = objective_functions.Mean_Square_forward(y_batch, probs)
+            epoch_loss /= n
+            epoch_acc   = correct / n
+            history["train_loss"].append(epoch_loss)
+            history["train_acc"].append(epoch_acc)
 
-                batch_losses.append(np.mean(loss))
-
-                self.backward(y_batch, logits)
-                self.step()
-
-            train_accuracy = correct_predictions / X_train.shape[1]
-            epoch_loss = np.mean(batch_losses)
-            epoch_losses.append(epoch_loss)
-
+            val_loss, val_acc = None, None
             if X_val is not None and y_val is not None:
-                val_acc, val_loss, val_f1 = self.evaluate(X_val, y_val, verbose=False)
+                val_logits = self.forward(X_val)
+                val_loss = self.loss_function.forward(val_logits, y_val)
+                val_acc  = float(np.mean(np.argmax(val_logits, axis=1) == y_val))
+                history["val_loss"].append(val_loss)
+                history["val_acc"].append(val_acc)
 
-                print(
-                    f"Epoch {epoch+1}/{epochs} | Train Loss {epoch_loss:.4f} | "
-                    f"Train Acc {train_accuracy:.4f} | Val Acc {val_acc:.4f} | Val F1 {val_f1:.4f}"
-                )
-
-                if val_f1 > best_f1:
-                    best_f1 = val_f1
-                    best_weights = self.get_weights()
-
-                wandb.log({
-                    "epoch": epoch + 1,
+            # W&B
+            if wandb_run is not None:
+                log_dict = {
+                    "epoch":      epoch + 1,
                     "train_loss": epoch_loss,
-                    "train_accuracy": train_accuracy,
-                    "val_loss": val_loss,
-                    "val_accuracy": val_acc,
-                    "val_f1": val_f1
-                })
+                    "train_acc":  epoch_acc,
+                }
+                if val_loss is not None:
+                    log_dict["val_loss"] = val_loss
+                    log_dict["val_acc"]  = val_acc
 
-            else:
-                print(f"Epoch {epoch+1}/{epochs} | Train Loss {epoch_loss:.4f} | Train Acc {train_accuracy:.4f}")
-                wandb.log({
-                    "epoch": epoch + 1,
-                    "train_loss": epoch_loss,
-                    "train_accuracy": train_accuracy
-                })
+                wandb_run.log(log_dict)
 
-        self.set_weights(best_weights)
-        return epoch_losses
+            val_str = (f"  val_loss={val_loss:.4f}  val_acc={val_acc:.4f}"
+                       if val_loss is not None else "")
+            print(f"Epoch {epoch+1}/{epochs}  "
+                  f"train_loss={epoch_loss:.4f}  train_acc={epoch_acc:.4f}{val_str}")
 
-    def evaluate(self, X, y, verbose=True):
-        if y.shape[0] != self.output_dim and len(y.shape) > 1 and y.shape[1] == self.output_dim:
-            y = y.T
-            
+        return history
+
+   
+
+    def evaluate(self, X, y):
         logits = self.forward(X)
+        loss   = self.loss_function.forward(logits, y)
+        accuracy  = float(np.mean(np.argmax(logits, axis=1) == y))
+        return loss, accuracy, logits
 
-        predicted = np.argmax(logits, axis=0)
-        actual = np.argmax(y, axis=0)
+    def get_weights(self):
+        d = {}
+        for i, layer in enumerate(self.layers):
+            d[f"W{i}"] = layer.W.copy()
+            d[f"b{i}"] = layer.b.copy()
+        return d
 
-        accuracy = np.mean(predicted == actual)
-        f1 = f1_score(actual, predicted, average="macro")
-
-        probs = self.layers[-1].output
-
-        if self.loss_type == "cross_entropy":
-            loss = np.mean(objective_functions.Cross_entropy_forward(y, probs))
-        else:
-            loss = np.mean(objective_functions.Mean_Square_forward(y, probs))
-        if verbose:
-            print(f"Accuracy: {accuracy}")
-            print(f"F1 Score: {f1}")
-            print(f"Loss: {loss}")
-        return accuracy, loss, f1
+    def set_weights(self, weight_dict):
+        for i, layer in enumerate(self.layers):
+            w_key = f"W{i}"
+            b_key = f"b{i}"
+            if w_key in weight_dict:
+                layer.W = weight_dict[w_key].copy()
+            if b_key in weight_dict:
+                layer.b = weight_dict[b_key].copy()
